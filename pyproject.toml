@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amatradecore"
+version = "0.1.0"
+description = "Core for a trading/analytical platform"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "GPL-3.0-or-later"}
+authors = [
+    {name = "Ama", email = "amalsdev367@example.com"}
+]
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
