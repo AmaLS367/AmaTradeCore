@@ -2,7 +2,7 @@ import json
 import asyncio
 import logging
 import websockets
-from typing import Callable, Awaitable, Dict, Any, Optional
+from typing import Callable, Awaitable, Dict, Any
 
 logger = logging.getLogger(__name__)
 

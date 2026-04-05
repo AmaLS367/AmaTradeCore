@@ -7,27 +7,27 @@ name = "amatradecore"
 version = "0.1.0"
 description = "Core for a trading/analytical platform"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = {text = "GPL-3.0-or-later"}
 authors = [
     {name = "Ama", email = "amalsdev367@example.com"}
 ]
 dependencies = [
-    "httpx",
-    "pandas",
-    "pydantic",
-    "fastapi",
-    "python-dotenv",
-    "websockets",
-    "uvicorn"
+    "httpx==0.28.1",
+    "pandas==3.0.2",
+    "pydantic==2.12.5",
+    "fastapi==0.135.3",
+    "python-dotenv==1.2.2",
+    "websockets==16.0",
+    "uvicorn==0.43.0"
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "ruff",
-    "mypy",
-    "pytest",
-    "pytest-asyncio"
+    "ruff==0.15.9",
+    "mypy==1.20.0",
+    "pytest==9.0.2",
+    "pytest-asyncio==1.3.0",
 ]
 
 [tool.setuptools.packages.find]
