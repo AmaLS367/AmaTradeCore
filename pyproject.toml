@@ -12,7 +12,23 @@ license = {text = "GPL-3.0-or-later"}
 authors = [
     {name = "Ama", email = "amalsdev367@example.com"}
 ]
-dependencies = []
+dependencies = [
+    "httpx",
+    "pandas",
+    "pydantic",
+    "fastapi",
+    "python-dotenv",
+    "websockets",
+    "uvicorn"
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "pytest-asyncio"
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
