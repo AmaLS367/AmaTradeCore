@@ -15,15 +15,21 @@ from ..models.market import (
 class BinanceAsyncClient:
     BASE_URL = "https://api.binance.com"
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        api_secret: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ):
         headers = {}
         if api_key:
             headers["X-MBX-APIKEY"] = api_key
-        
+
+        self.api_secret = api_secret
         self.client = httpx.AsyncClient(
-            base_url=self.BASE_URL,
+            base_url=base_url or self.BASE_URL,
             headers=headers,
-            timeout=10.0
+            timeout=10.0,
         )
 
     async def close(self):

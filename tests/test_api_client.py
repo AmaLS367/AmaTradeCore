@@ -17,6 +17,18 @@ def client():
     return BinanceAsyncClient()
 
 
+def test_client_uses_configured_base_url_and_api_key():
+    client = BinanceAsyncClient(
+        api_key="key-123",
+        api_secret="secret-456",
+        base_url="https://testnet.binance.vision",
+    )
+
+    assert str(client.client.base_url) == "https://testnet.binance.vision"
+    assert client.client.headers["X-MBX-APIKEY"] == "key-123"
+    assert client.api_secret == "secret-456"
+
+
 @pytest.mark.asyncio
 async def test_get_server_time(client):
     mock_response = AsyncMock()
