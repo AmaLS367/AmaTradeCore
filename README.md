@@ -30,6 +30,14 @@
 uv run pytest
 ```
 
+## Docs
+
+Проектный docs-site живёт отдельно в `docs-site/` и предназначен для GitHub Pages.
+
+- локальный dev-сервер: `cd docs-site && npm install && npm run dev`
+- production build: `cd docs-site && npm run build`
+- target URL after deploy: `https://amals367.github.io/AmaTradeCore/`
+
 ## CLI
 
 Запуск интерактивного data collector:
