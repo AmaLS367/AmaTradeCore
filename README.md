@@ -8,6 +8,22 @@
 2. Скопируйте `.env.example` в `.env` и настройте переменные окружения.
 3. Установите зависимости через `uv sync`.
 
+## Конфиг
+
+Проект читает настройки из `.env` через `pydantic-settings`.
+
+Основные переменные:
+
+- `BINANCE_API_KEY`
+- `BINANCE_API_SECRET`
+- `BINANCE_BASE_URL`
+- `BINANCE_WS_URL`
+- `DEFAULT_SYMBOL`
+- `DEFAULT_STREAM`
+- `DEFAULT_INTERVAL`
+- `DEFAULT_DEPTH_LIMIT`
+- `LOG_LEVEL`
+
 ## Проверка
 
 ```bash
