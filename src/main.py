@@ -1,5 +1,6 @@
 import asyncio
 import os
+import select
 import sys
 from collections import deque
 from dataclasses import dataclass, field
@@ -14,12 +15,14 @@ from rich.text import Text
 
 from .api.client import BinanceAsyncClient
 from .api.websocket import BinanceWebSocketManager
+from .config import AppConfig, create_collector_config, load_config
 from .models.market import BookTicker, DepthUpdate, ExchangeInfo, Kline, OrderBook, Trade
 
 COMMON_SYMBOLS = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"]
 KLINE_INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"]
 DEPTH_LIMITS = [5, 10, 20, 50, 100]
 MAX_EVENTS = 12
+POLL_INTERVAL = 0.1
 
 
 class StreamType(str, Enum):
@@ -164,6 +167,14 @@ def render_menu(state: MenuState) -> Panel:
     )
 
 
+def create_live_display(renderable: Any, console: Optional[Console] = None) -> Live:
+    return Live(
+        renderable,
+        console=console,
+        auto_refresh=False,
+    )
+
+
 def render_collector(
     config: CollectorConfig,
     events: Deque[str],
@@ -240,9 +251,13 @@ async def subscribe_for_config(
         await manager.subscribe_depth_updates(config.symbol, callback)
 
 
-async def fetch_symbols() -> list[str]:
+async def fetch_symbols(app_config: AppConfig) -> list[str]:
     try:
-        async with BinanceAsyncClient() as client:
+        async with BinanceAsyncClient(
+            api_key=app_config.binance_api_key,
+            api_secret=app_config.binance_api_secret,
+            base_url=app_config.binance_base_url,
+        ) as client:
             exchange_info = await client.get_exchange_info()
     except Exception:
         return list(COMMON_SYMBOLS)
@@ -251,8 +266,15 @@ async def fetch_symbols() -> list[str]:
     return symbols or list(COMMON_SYMBOLS)
 
 
-async def fetch_snapshot(config: CollectorConfig) -> Optional[OrderBook | BookTicker]:
-    async with BinanceAsyncClient() as client:
+async def fetch_snapshot(
+    config: CollectorConfig,
+    app_config: AppConfig,
+) -> Optional[OrderBook | BookTicker]:
+    async with BinanceAsyncClient(
+        api_key=app_config.binance_api_key,
+        api_secret=app_config.binance_api_secret,
+        base_url=app_config.binance_base_url,
+    ) as client:
         if config.stream is StreamType.DEPTH_UPDATES:
             return await client.get_order_book(config.symbol, limit=config.depth_limit)
         if config.stream is StreamType.BOOK_TICKER:
@@ -260,58 +282,77 @@ async def fetch_snapshot(config: CollectorConfig) -> Optional[OrderBook | BookTi
     return None
 
 
-async def run_collector(config: CollectorConfig, console: Console) -> None:
+async def run_collector(
+    config: CollectorConfig,
+    console: Console,
+    app_config: AppConfig,
+) -> None:
     events: Deque[str] = deque(maxlen=MAX_EVENTS)
-    status = "Connecting"
+    auth_mode = "authenticated" if app_config.binance_api_key else "public"
+    status = f"Connecting ({auth_mode})"
+    dirty = True
     try:
-        snapshot = await fetch_snapshot(config)
+        snapshot = await fetch_snapshot(config, app_config)
     except Exception as exc:
         snapshot = None
         status = f"Snapshot failed: {exc}"
 
     async def on_event(event: Any) -> None:
-        nonlocal status
+        nonlocal status, dirty
         status = "Streaming"
         events.appendleft(format_event(event))
+        dirty = True
 
-    manager = BinanceWebSocketManager()
+    manager = BinanceWebSocketManager(base_url=app_config.binance_ws_url)
     try:
         await subscribe_for_config(manager, config, on_event)
-        with Live(
+        with create_live_display(
             render_collector(config, events, status, snapshot),
             console=console,
-            refresh_per_second=10,
         ) as live:
             while True:
-                live.update(render_collector(config, events, status, snapshot))
-                key, _ = await asyncio.to_thread(read_key)
-                if key.lower() == "q" or key == "\x1b":
+                if dirty:
+                    live.update(
+                        render_collector(config, events, status, snapshot),
+                        refresh=True,
+                    )
+                    dirty = False
+
+                key, _ = read_key_nonblocking()
+                if key and (key.lower() == "q" or key == "\x1b"):
                     break
+                await asyncio.sleep(POLL_INTERVAL)
     finally:
         await manager.unsubscribe_all()
 
 
 async def cli() -> int:
+    app_config = load_config()
     console = Console()
-    symbols = await fetch_symbols()
+    symbols = await fetch_symbols(app_config)
+    collector_config = create_collector_config(app_config)
+    if collector_config.symbol not in symbols:
+        symbols = [collector_config.symbol, *symbols]
     state = MenuState(
-        config=CollectorConfig(symbol=symbols[0]),
+        config=collector_config,
         selected_index=0,
         symbols=symbols,
     )
     controller = MenuController(state)
 
-    with Live(render_menu(state), console=console, refresh_per_second=12) as live:
+    with create_live_display(render_menu(state), console=console) as live:
+        live.update(render_menu(state), refresh=True)
         while True:
-            live.update(render_menu(state))
             key, extended_key = await asyncio.to_thread(read_key)
             action = controller.handle_key(key, extended_key)
+            live.update(render_menu(state), refresh=True)
             if action is MenuAction.START:
                 live.stop()
                 console.clear()
-                await run_collector(state.config, console)
+                await run_collector(state.config, console, app_config)
                 console.clear()
                 live.start()
+                live.update(render_menu(state), refresh=True)
             elif action is MenuAction.QUIT:
                 return 0
 
@@ -339,6 +380,48 @@ def read_key() -> tuple[str, Optional[str]]:
                 final_char = sys.stdin.read(1)
                 mapping = {"A": "H", "B": "P", "C": "M", "D": "K"}
                 return "\xe0", mapping.get(final_char)
+        return key, None
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, original)
+
+
+def read_key_nonblocking() -> tuple[Optional[str], Optional[str]]:
+    if os.name == "nt":
+        import msvcrt
+
+        if not msvcrt.kbhit():
+            return None, None
+
+        key = msvcrt.getwch()
+        if key in ("\x00", "\xe0"):
+            return key, msvcrt.getwch()
+        return key, None
+
+    import termios
+    import tty
+
+    fd = sys.stdin.fileno()
+    original = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        ready, _, _ = select.select([sys.stdin], [], [], 0)
+        if not ready:
+            return None, None
+
+        key = sys.stdin.read(1)
+        if key == "\x1b":
+            ready, _, _ = select.select([sys.stdin], [], [], 0)
+            if not ready:
+                return key, None
+
+            next_char = sys.stdin.read(1)
+            if next_char == "[":
+                ready, _, _ = select.select([sys.stdin], [], [], 0)
+                if ready:
+                    final_char = sys.stdin.read(1)
+                    mapping = {"A": "H", "B": "P", "C": "M", "D": "K"}
+                    return "\xe0", mapping.get(final_char)
+            return key, None
         return key, None
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, original)

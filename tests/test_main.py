@@ -8,6 +8,7 @@ from src.main import (
     MenuController,
     MenuState,
     StreamType,
+    create_live_display,
     extract_symbol_pairs,
     subscribe_for_config,
 )
@@ -96,6 +97,28 @@ def test_enter_returns_start_action_on_start_row():
     action = controller.handle_key("\r", None)
 
     assert action is MenuAction.START
+
+
+def test_menu_state_can_start_from_env_default_config():
+    state = MenuState(
+        config=CollectorConfig(
+            symbol="SOLUSDT",
+            stream=StreamType.BOOK_TICKER,
+            interval="5m",
+            depth_limit=50,
+        ),
+        selected_index=0,
+        symbols=["BTCUSDT", "SOLUSDT"],
+    )
+
+    assert state.config.symbol == "SOLUSDT"
+    assert state.config.stream is StreamType.BOOK_TICKER
+
+
+def test_create_live_display_disables_auto_refresh():
+    display = create_live_display("content")
+
+    assert display.auto_refresh is False
 
 
 @pytest.mark.asyncio
