@@ -3,7 +3,7 @@ import inspect
 import json
 import logging
 from contextlib import suppress
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Awaitable, Callable, Dict, Optional
 
 import websockets
 
@@ -15,10 +15,15 @@ logger = logging.getLogger(__name__)
 class BinanceWebSocketManager:
     BASE_URL = "wss://stream.binance.com:9443/ws"
 
-    def __init__(self, reconnect_delay: float = 5.0):
+    def __init__(
+        self,
+        reconnect_delay: float = 5.0,
+        base_url: Optional[str] = None,
+    ):
         self.connections: Dict[str, websockets.WebSocketClientProtocol] = {}
         self.tasks: Dict[str, asyncio.Task] = {}
         self.reconnect_delay = reconnect_delay
+        self.base_url = base_url or self.BASE_URL
 
     async def subscribe(
         self,
@@ -98,7 +103,7 @@ class BinanceWebSocketManager:
         callback: Callable[[Any], Awaitable[None]],
         parser: Callable[[dict], Any],
     ) -> asyncio.Task:
-        url = f"{self.BASE_URL}/{stream_name}"
+        url = f"{self.base_url}/{stream_name}"
         return asyncio.create_task(self._listen(url, stream_name, callback, parser))
 
     async def _listen(
