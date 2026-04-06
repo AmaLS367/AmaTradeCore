@@ -60,6 +60,8 @@ class MenuState:
     config: CollectorConfig
     selected_index: int
     symbols: list[str]
+    editing_pair: bool = False
+    pair_input: str = ""
     intervals: list[str] = field(default_factory=lambda: list(KLINE_INTERVALS))
     depth_limits: list[int] = field(default_factory=lambda: list(DEPTH_LIMITS))
 
@@ -78,6 +80,8 @@ class MenuController:
         self.state = state
 
     def handle_key(self, key: str, extended_key: Optional[str] = None) -> MenuAction:
+        if self.state.editing_pair:
+            return self._handle_pair_input(key)
         if key in ("\x00", "\xe0"):
             return self._handle_arrow(extended_key)
         if key == "\r":
@@ -88,9 +92,9 @@ class MenuController:
 
     def _handle_arrow(self, extended_key: Optional[str]) -> MenuAction:
         if extended_key == "H":
-            self.state.selected_index = (self.state.selected_index - 1) % 6
+            self.state.selected_index = (self.state.selected_index - 1) % 7
         elif extended_key == "P":
-            self.state.selected_index = (self.state.selected_index + 1) % 6
+            self.state.selected_index = (self.state.selected_index + 1) % 7
         elif extended_key == "K":
             self._cycle_current(-1)
         elif extended_key == "M":
@@ -99,9 +103,34 @@ class MenuController:
 
     def _activate_selected(self) -> MenuAction:
         if self.state.selected_index == 4:
-            return MenuAction.START
+            self.state.editing_pair = True
+            self.state.pair_input = ""
+            return MenuAction.NONE
         if self.state.selected_index == 5:
+            return MenuAction.START
+        if self.state.selected_index == 6:
             return MenuAction.QUIT
+        return MenuAction.NONE
+
+    def _handle_pair_input(self, key: str) -> MenuAction:
+        if key == "\r":
+            symbol = normalize_symbol(self.state.pair_input)
+            if symbol:
+                self.state.config.symbol = symbol
+                if symbol not in self.state.symbols:
+                    self.state.symbols.append(symbol)
+                    self.state.symbols.sort(key=lambda value: (not value.endswith("USDT"), value))
+            self.state.editing_pair = False
+            return MenuAction.NONE
+        if key == "\x1b":
+            self.state.editing_pair = False
+            self.state.pair_input = ""
+            return MenuAction.NONE
+        if key in ("\x08", "\x7f"):
+            self.state.pair_input = self.state.pair_input[:-1]
+            return MenuAction.NONE
+        if key.isalnum():
+            self.state.pair_input += key.upper()
         return MenuAction.NONE
 
     def _cycle_current(self, direction: int) -> None:
@@ -148,6 +177,10 @@ def render_menu(state: MenuState) -> Panel:
         ("Stream", state.config.stream.label),
         ("Interval", state.config.interval),
         ("Depth Limit", str(state.config.depth_limit)),
+        (
+            "Custom Pair",
+            state.pair_input if state.editing_pair else "Press Enter to type a symbol",
+        ),
         ("Start Collector", "Press Enter"),
         ("Quit", "Press Enter or q"),
     ]
@@ -157,7 +190,10 @@ def render_menu(state: MenuState) -> Panel:
         table.add_row(Text(label, style=style), Text(value, style=style))
 
     instructions = Text(
-        "Arrows: Up/Down move, Left/Right change value, Enter select, q quit",
+        (
+            "Arrows: Up/Down move, Left/Right change value, "
+            "Enter select, q quit, Custom Pair accepts typing"
+        ),
         style="dim",
     )
     return Panel(
@@ -173,6 +209,14 @@ def create_live_display(renderable: Any, console: Optional[Console] = None) -> L
         console=console,
         auto_refresh=False,
     )
+
+
+def normalize_symbol(value: str) -> str:
+    return "".join(char for char in value.upper() if char.isalnum())
+
+
+def should_exit_collector(key: Optional[str]) -> bool:
+    return key in {"q", "Q", "\x1b", "\x03"}
 
 
 def render_collector(
@@ -319,7 +363,7 @@ async def run_collector(
                     dirty = False
 
                 key, _ = read_key_nonblocking()
-                if key and (key.lower() == "q" or key == "\x1b"):
+                if should_exit_collector(key):
                     break
                 await asyncio.sleep(POLL_INTERVAL)
     finally:
