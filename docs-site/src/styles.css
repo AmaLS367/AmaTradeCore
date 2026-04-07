@@ -312,3 +312,23 @@ button { cursor: pointer; transition: all 0.2s ease; }
   .landing-grid, .cases-grid { grid-template-columns: 1fr; }
   .landing { gap: 80px; }
 }
+
+[data-theme='dark'] .hero h1 {
+  background: linear-gradient(135deg, #f8fafc 0%, var(--eyebrow) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme='dark'] .feature-card {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .use-cases {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--sidebar-border);
+}
+
+[data-theme='dark'] .case-item strong {
+  color: #f8fafc;
+}
