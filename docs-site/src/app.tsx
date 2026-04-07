@@ -156,12 +156,90 @@ function DocRoute() {
   return <DocLayout language={language} page={page} />;
 }
 
+function Landing({ language }: { language: DocLanguage }) {
+  const navigate = useNavigate();
+  const content = {
+    ru: {
+      title: "Сбор данных Binance — без лишних сложностей",
+      subtitle: "AmaTradeCore: Профессиональный инструмент для тех, кто ценит чистоту данных и простоту запуска.",
+      cta: "Перейти к документации",
+      features: [
+        { title: "Для новичков", desc: "Не нужно быть программистом. Запуск одной командой через терминал." },
+        { title: "Чистые данные", desc: "Мы уже настроили фильтрацию и форматирование. Вы получаете готовые CSV/JSON." },
+        { title: "Надежность", desc: "Авто-реконнект к Binance. Никаких пропущенных тиков и свечей." }
+      ],
+      forWhom: [
+        { t: "Трейдерам", d: "Собирайте историю для анализа своих стратегий без участия в API-сложностях." },
+        { t: "Аналитикам", d: "Получайте данные в идеальном виде для Excel, Python или SQL." },
+        { t: "Разработчикам", d: "Используйте как надежное ядро для своих торговых ботов." }
+      ]
+    },
+    en: {
+      title: "Binance Data Collection — Simplified",
+      subtitle: "AmaTradeCore: A professional tool for those who value data purity and ease of use.",
+      cta: "Go to Documentation",
+      features: [
+        { title: "Beginner Friendly", desc: "No coding required. Launch with a single command in your terminal." },
+        { title: "Clean Data", desc: "Filtered and formatted. You get ready-to-use CSV/JSON files." },
+        { title: "Reliable", desc: "Auto-reconnect to Binance. No missed ticks or candles." }
+      ],
+      forWhom: [
+        { t: "Traders", d: "Collect history for backtesting without dealing with API complexity." },
+        { t: "Analysts", d: "Get data in perfect shape for Excel, Python, or SQL." },
+        { t: "Developers", d: "Use it as a robust core for your trading bots." }
+      ]
+    }
+  }[language];
+
+  return (
+    <div className="landing">
+      <section className="hero">
+        <div className="eyebrow">AmaTradeCore</div>
+        <h1>{content.title}</h1>
+        <p className="hero-text">{content.subtitle}</p>
+        <button className="cta-button" onClick={() => navigate(`/${language}/overview`)}>{content.cta}</button>
+      </section>
+
+      <div className="landing-grid">
+        {content.features.map(f => (
+          <div key={f.title} className="feature-card">
+            <h3>{f.title}</h3>
+            <p>{f.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="use-cases">
+        <h2 style={{ textAlign: "center", marginBottom: "40px" }}>{language === "ru" ? "Для кого это?" : "Who is it for?"}</h2>
+        <div className="cases-grid">
+          {content.forWhom.map(c => (
+            <div key={c.t} className="case-item">
+              <strong>{c.t}</strong>
+              <p>{c.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+      
+      <footer className="landing-footer">
+        <div className="language-switcher" style={{ background: "var(--section-bg)", border: "1px solid var(--sidebar-border)" }}>
+          {languages.map((candidate) => (
+            <button key={candidate} type="button" className={candidate === language ? "active" : ""} onClick={() => navigate(`/${candidate}`)}>{candidate.toUpperCase()}</button>
+          ))}
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/ru/overview" replace />} />
+      <Route path="/" element={<Navigate to="/ru" replace />} />
+      <Route path="/ru" element={<Landing language="ru" />} />
+      <Route path="/en" element={<Landing language="en" />} />
       <Route path="/:language/:slug" element={<DocRoute />} />
-      <Route path="*" element={<Navigate to="/ru/overview" replace />} />
+      <Route path="*" element={<Navigate to="/ru" replace />} />
     </Routes>
   );
 }
