@@ -39,6 +39,7 @@ export const overviewEn: DocPage = {
         { type: "paragraph", text: "When you launch the collector, a data stream appears in the terminal. We've designed it to be as clear as possible, even for those without prior experience." },
         {
           type: "code",
+          language: "text",
           caption: "Example of a trade log",
           code: "[12:45:01] TRADE | BTCUSDT | Price: 68,420.50 | Qty: 0.021 | Side: SELL (Maker: BUY)",
         },

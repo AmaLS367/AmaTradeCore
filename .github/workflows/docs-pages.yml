@@ -30,11 +30,15 @@ jobs:
 
       - name: Install dependencies
         working-directory: docs-site
-        run: npm install
+        run: npm ci
+
+      - name: Type check
+        working-directory: docs-site
+        run: npx tsc --project tsconfig.json
 
       - name: Build docs site
         working-directory: docs-site
-        run: npm run build
+        run: npx vite build && node ./scripts/copy-spa-fallback.mjs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -47,6 +47,7 @@ export const overviewRu: DocPage = {
         { type: "paragraph", text: "При запуске коллектора в терминале появляется поток данных. Мы сделали его максимально понятным даже для человека без опыта." },
         {
           type: "code",
+          language: "text",
           caption: "Пример лога сделки",
           code: "[12:45:01] TRADE | BTCUSDT | Price: 68,420.50 | Qty: 0.021 | Side: SELL (Maker: BUY)",
         },
